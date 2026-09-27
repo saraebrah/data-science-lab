@@ -10,3 +10,5 @@ data/processed/*
 !data/processed/.gitkeep
 
 *.tar
+
+notebooks/practice.ipynb
