@@ -1,7 +1,6 @@
 from collections import Counter
 from collections.abc import Iterable, Iterator
 from pathlib import Path
-
 import pandas as pd
 
 
@@ -85,3 +84,17 @@ def summarize_activity(
     )
 
     return summary.fillna(0).astype("int64").sort_index()
+
+
+def select_period(
+    transactions: pd.DataFrame,
+    *,
+    start: pd.Timestamp,
+    end: pd.Timestamp,
+) -> pd.DataFrame:
+    """Select start <= timestamp < end; timestamps must already be parsed."""
+    mask = (
+        (transactions["timestamp"] >= start)
+        & (transactions["timestamp"] < end)
+    )
+    return transactions.loc[mask].copy()
