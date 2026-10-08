@@ -4,3 +4,4 @@ pyarrow
 matplotlib
 ipykernel
 pytest
+scikit-learn
