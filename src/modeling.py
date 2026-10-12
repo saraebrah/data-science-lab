@@ -1,9 +1,10 @@
 import pandas as pd
-
+import numpy as np
 from sklearn.compose import ColumnTransformer
 from sklearn.ensemble import HistGradientBoostingClassifier
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OrdinalEncoder
+from sklearn.metrics import average_precision_score
 
 
 NUMERIC_FEATURES = [
@@ -60,3 +61,53 @@ def build_model() -> Pipeline:
         ("preprocess", preprocessing),
         ("model", classifier),
     ])
+
+
+def evaluate_scores(
+    transactions: pd.DataFrame,
+    scores: np.ndarray,
+    *,
+    daily_budget: int = 50,
+) -> dict:
+    """Evaluate ranking quality and a fixed daily review capacity."""
+    scores = np.asarray(scores)
+
+    if scores.shape != (len(transactions),) or not np.isfinite(scores).all():
+        raise ValueError("Supply one finite score per transaction.")
+    if daily_budget < 1:
+        raise ValueError("daily_budget must be positive.")
+
+    ranked = (
+        transactions[["timestamp", "is_laundering"]]
+        .reset_index(drop=True)
+        .copy()
+    )
+
+    positives = int(ranked["is_laundering"].sum())
+    if positives == 0:
+        raise ValueError("Recall requires positive examples.")
+
+    ranked["score"] = scores
+    ranked["day"] = ranked["timestamp"].dt.normalize()
+    ranked["tie_breaker"] = np.random.default_rng(42).random(len(ranked))
+
+    alerts = (
+        ranked.sort_values(
+            ["day", "score", "tie_breaker"],
+            ascending=[True, False, True],
+        )
+        .groupby("day", sort=False)
+        .head(daily_budget)
+    )
+
+    caught = int(alerts["is_laundering"].sum())
+
+    return {
+        "average_precision": average_precision_score(
+            ranked["is_laundering"], scores
+        ),
+        "alerts": len(alerts),
+        "laundering_caught": caught,
+        "precision_at_budget": caught / len(alerts),
+        "recall_at_budget": caught / positives,
+    }
