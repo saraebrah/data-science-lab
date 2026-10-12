@@ -1,0 +1,3 @@
+,average_precision,alerts,laundering_caught,precision_at_budget,recall_at_budget
+payment_type,0.006842265204234755,100.0,2.0,0.02,0.0019305019305019305
+gradient_boosting,0.06686427739461236,100.0,27.0,0.27,0.026061776061776062
