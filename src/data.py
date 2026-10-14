@@ -98,3 +98,42 @@ def select_period(
         & (transactions["timestamp"] < end)
     )
     return transactions.loc[mask].copy()
+
+
+def attach_account_endpoints(
+    transactions: pd.DataFrame,
+    history: pd.DataFrame,
+) -> pd.DataFrame:
+    """Restore account endpoints using original CSV row identifiers."""
+    endpoint_columns = [
+        "sender_bank",
+        "sender_account",
+        "receiver_bank",
+        "receiver_account",
+    ]
+
+    lookup = history[
+        ["source_row", "timestamp", *endpoint_columns]
+    ]
+
+    joined = transactions.merge(
+        lookup,
+        on="source_row",
+        how="left",
+        sort=False,
+        validate="one_to_one",
+        suffixes=("", "_history"),
+    )
+
+    if not joined["timestamp"].equals(joined["timestamp_history"]):
+        raise ValueError("History timestamps do not match prepared records.")
+
+    if joined[endpoint_columns].isna().any().any():
+        raise ValueError("Some transactions have missing account endpoints.")
+
+    if not joined["source_row"].equals(
+        transactions["source_row"].reset_index(drop=True)
+    ):
+        raise ValueError("Joining history changed transaction order.")
+
+    return joined.drop(columns="timestamp_history")
