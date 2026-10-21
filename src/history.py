@@ -43,7 +43,7 @@ def make_history_features(
     transaction amounts are not read. Self-transfers count once in each direction.
     """
     if not history["source_row"].is_unique or not targets["source_row"].is_unique:
-        raise ValueError("Source-row identifiers must be unique.")
+        raise ValueError("SourcOkay, go to the next piece, which is index.e-row identifiers must be unique.")
 
     result = pd.DataFrame({"source_row": targets["source_row"].to_numpy()})
 
