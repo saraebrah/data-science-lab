@@ -35,7 +35,7 @@ The boosting pipeline fits an OrdinalEncoder on training data, marks its three
 encoded columns as categorical, and uses 50 boosting iterations, 15 maximum
 leaves per tree, a 0.05 learning rate, and L2 regularization of 1.0. Automatic
 early stopping is disabled; the seed is 42 and CPU threads are limited to two.
-The notebook recorded 3.7 seconds for fit and prediction on this run.
+The notebook recorded 3.7 seconds for the timed fit-and-prediction block on this run.
 Installed versions at completion: pandas 3.0.6, NumPy 2.5.3, and scikit-learn
 1.9.1.
 
@@ -112,3 +112,52 @@ account activity adds useful signal, using the same ranking metrics and budget.
   investigated.
 - Functions suit stateless feature construction and evaluation. Existing encoder,
   estimator, and pipeline classes appropriately retain learned state.
+
+### CPU threads and `threadpool_limits`
+
+The boosting model runs on the CPU. A CPU core is a hardware execution resource;
+threads are execution paths that the operating system schedules onto cores.
+Numerical libraries can split supported operations across several native threads.
+More threads do not necessarily make a small workload faster: coordinating them
+costs time, and multiple parallel operations can compete for the same resources.
+
+We used:
+
+```python
+from threadpoolctl import threadpool_limits
+
+with threadpool_limits(limits=2):
+    model.fit(X_train, y_train)
+    scores = model.predict_proba(X_validation)[:, 1]
+```
+
+This temporarily limits supported native numerical-library thread pools, such as
+OpenMP and BLAS pools, to two threads each. The `with` block is a context manager:
+the previous settings are restored when the block exits, including on an error.
+It does not limit the entire Python process to two threads, impose a RAM budget,
+or control GPU execution. Scikit-learn's `n_jobs` controls a different layer of
+parallelism and is not interchangeable with this setting.
+
+We chose two threads to keep CPU concurrency modest on the Mac and keep the
+experiment settings consistent. This may leave more capacity for other apps,
+but can increase runtime. We did not benchmark alternative thread counts or
+measure temperature, power, or energy, so no speedup or cooling benefit has been
+established for this project.
+
+Sources: [threadpoolctl](https://github.com/joblib/threadpoolctl) and
+[scikit-learn resource management](https://scikit-learn.org/stable/computing/parallelism.html).
+
+### Measuring memory, saving data, and measuring time
+
+- `frame.memory_usage(deep=True).sum() / 1024**2` estimates the DataFrame's
+  memory in MiB, including deeper inspection of object-backed values. One MiB
+  is 1,048,576 bytes. This is not total Python-process memory or the peak reached
+  during loading, joining, encoding, or training.
+- Parquet is a column-oriented format that preserves supported column types and
+  supports compression. Saving prepared tables avoids repeating the full CSV
+  preparation every session. Compressed file size and loaded RAM use are different
+  measurements; saving a file does not remove the DataFrame from RAM.
+- `perf_counter()` measures elapsed wall-clock time between two calls. Our timing
+  covers the block that fits and predicts, excluding earlier data loading and
+  feature construction. Compare timings with the same workload and thread
+  settings; a single run is not a rigorous speed benchmark.
