@@ -98,3 +98,18 @@ Only mark checks that were actually run and passed.
 
 Confirm the evaluation window, construct a manageable modeling dataset,
 and build the first baseline.
+
+## Learning takeaways
+
+- `usecols` reads only the fields needed for a question. This avoids allocating
+  a full DataFrame of unnecessary columns.
+- `chunksize=100_000` returns an iterator of batches rather than one DataFrame
+  containing the whole CSV. Summarizing each batch and retaining only counts
+  keeps the audit's memory requirements bounded. Keeping every batch in a list
+  and concatenating them would still require memory for the retained data.
+- A generator's `yield` supplies a batch when requested. It lets the caller
+  process data incrementally instead of constructing a complete result first.
+- File size on disk is not a reliable estimate of DataFrame memory. Parsing
+  strings, allocating arrays, and making temporary copies can increase RAM use.
+- Small previews reveal formatting but need not represent the full dataset.
+  Chunked summaries allow checking the complete file without loading it all.

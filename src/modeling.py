@@ -21,22 +21,34 @@ CATEGORICAL_FEATURES = [
 ]
 
 
-def make_features(transactions: pd.DataFrame) -> pd.DataFrame:
+def make_features(
+    transactions: pd.DataFrame,
+    *,
+    extra_numeric_features: tuple[str, ...] = (),
+) -> pd.DataFrame:
     """Build transaction-level features without changing the input."""
+    numeric_features = NUMERIC_FEATURES + list(extra_numeric_features)
     features = transactions[
-        ["amount_paid", "amount_received", *CATEGORICAL_FEATURES]
+        [
+            "amount_paid", "amount_received",
+            *extra_numeric_features, *CATEGORICAL_FEATURES,
+        ]
     ].copy()
 
     features["hour"] = transactions["timestamp"].dt.hour
     features["day_of_week"] = transactions["timestamp"].dt.dayofweek
 
-    return features[NUMERIC_FEATURES + CATEGORICAL_FEATURES]
+    return features[numeric_features + CATEGORICAL_FEATURES]
 
 
-def build_model() -> Pipeline:
+def build_model(
+    *,
+    extra_numeric_features: tuple[str, ...] = (),
+) -> Pipeline:
     """Create a preprocessing and classification pipeline."""
+    numeric_features = NUMERIC_FEATURES + list(extra_numeric_features)
     preprocessing = ColumnTransformer([
-        ("numeric", "passthrough", NUMERIC_FEATURES),
+        ("numeric", "passthrough", numeric_features),
         (
             "categorical",
             OrdinalEncoder(
@@ -48,7 +60,10 @@ def build_model() -> Pipeline:
     ])
 
     classifier = HistGradientBoostingClassifier(
-        categorical_features=[4, 5, 6],
+        categorical_features=list(range(
+            len(numeric_features),
+            len(numeric_features) + len(CATEGORICAL_FEATURES),
+        )),
         max_iter=50,
         max_leaf_nodes=15,
         learning_rate=0.05,
