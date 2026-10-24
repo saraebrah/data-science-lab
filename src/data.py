@@ -137,3 +137,41 @@ def attach_account_endpoints(
         raise ValueError("Joining history changed transaction order.")
 
     return joined.drop(columns="timestamp_history")
+
+
+def read_source_rows(
+    path: Path,
+    *,
+    source_rows: Iterable[int],
+    columns: list[str],
+    chunksize: int = 100_000,
+) -> pd.DataFrame:
+    """Read selected original CSV rows without retaining the complete file.
+
+    Positions are zero-based data-row numbers, excluding the CSV header, and
+    refer to the unchanged source file used to create the prepared datasets.
+    Results follow source-file order; callers should join using source_row.
+    """
+    remaining = set(source_rows)
+    if not remaining:
+        raise ValueError("Request at least one source row.")
+
+    parts = []
+    row_offset = 0
+    for chunk in iter_transaction_chunks(
+        path, usecols=columns, chunksize=chunksize
+    ):
+        chunk["source_row"] = range(row_offset, row_offset + len(chunk))
+        row_offset += len(chunk)
+        matched = chunk.loc[chunk["source_row"].isin(remaining)].copy()
+
+        if not matched.empty:
+            parts.append(matched)
+            remaining.difference_update(matched["source_row"])
+        if not remaining:
+            break
+
+    if remaining:
+        raise ValueError(f"Source rows not found: {sorted(remaining)}")
+
+    return pd.concat(parts, ignore_index=True)
