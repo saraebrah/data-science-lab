@@ -21,32 +21,56 @@ CATEGORICAL_FEATURES = [
 ]
 
 
+def _feature_columns(
+    extra_numeric_features: tuple[str, ...],
+    excluded_features: tuple[str, ...],
+) -> tuple[list[str], list[str]]:
+    """Resolve one shared feature configuration for extraction and preprocessing."""
+    numeric_features = NUMERIC_FEATURES + list(extra_numeric_features)
+    categorical_features = CATEGORICAL_FEATURES.copy()
+    excluded = set(excluded_features)
+    unknown = excluded - set(numeric_features + categorical_features)
+    if unknown:
+        raise ValueError(f"Unknown excluded features: {sorted(unknown)}")
+    return (
+        [name for name in numeric_features if name not in excluded],
+        [name for name in categorical_features if name not in excluded],
+    )
+
+
 def make_features(
     transactions: pd.DataFrame,
     *,
     extra_numeric_features: tuple[str, ...] = (),
+    excluded_features: tuple[str, ...] = (),
 ) -> pd.DataFrame:
     """Build transaction-level features without changing the input."""
-    numeric_features = NUMERIC_FEATURES + list(extra_numeric_features)
-    features = transactions[
-        [
-            "amount_paid", "amount_received",
-            *extra_numeric_features, *CATEGORICAL_FEATURES,
-        ]
-    ].copy()
+    numeric_features, categorical_features = _feature_columns(
+        extra_numeric_features, excluded_features
+    )
+    raw_columns = [
+        name for name in numeric_features + categorical_features
+        if name not in {"hour", "day_of_week"}
+    ]
+    features = transactions[raw_columns].copy()
 
-    features["hour"] = transactions["timestamp"].dt.hour
-    features["day_of_week"] = transactions["timestamp"].dt.dayofweek
+    if "hour" in numeric_features:
+        features["hour"] = transactions["timestamp"].dt.hour
+    if "day_of_week" in numeric_features:
+        features["day_of_week"] = transactions["timestamp"].dt.dayofweek
 
-    return features[numeric_features + CATEGORICAL_FEATURES]
+    return features[numeric_features + categorical_features]
 
 
 def build_model(
     *,
     extra_numeric_features: tuple[str, ...] = (),
+    excluded_features: tuple[str, ...] = (),
 ) -> Pipeline:
     """Create a preprocessing and classification pipeline."""
-    numeric_features = NUMERIC_FEATURES + list(extra_numeric_features)
+    numeric_features, categorical_features = _feature_columns(
+        extra_numeric_features, excluded_features
+    )
     preprocessing = ColumnTransformer([
         ("numeric", "passthrough", numeric_features),
         (
@@ -55,14 +79,14 @@ def build_model(
                 handle_unknown="use_encoded_value",
                 unknown_value=-1,
             ),
-            CATEGORICAL_FEATURES,
+            categorical_features,
         ),
     ])
 
     classifier = HistGradientBoostingClassifier(
         categorical_features=list(range(
             len(numeric_features),
-            len(numeric_features) + len(CATEGORICAL_FEATURES),
+            len(numeric_features) + len(categorical_features),
         )),
         max_iter=50,
         max_leaf_nodes=15,

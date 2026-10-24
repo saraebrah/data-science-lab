@@ -81,3 +81,37 @@ def test_default_model_settings_remain_unchanged():
     assert model.l2_regularization == 1.0
     assert model.early_stopping is False
     assert model.random_state == 42
+
+
+def test_excluded_format_is_not_required_or_encoded(transactions):
+    configuration = {
+        "extra_numeric_features": tuple(HISTORY_FEATURES),
+        "excluded_features": ("payment_format",),
+    }
+    features = make_features(
+        transactions.drop(columns="payment_format"), **configuration
+    )
+    assert "payment_format" not in features
+    assert features.shape[1] == 10
+
+    pipeline = build_model(**configuration)
+    pipeline.set_params(model__max_iter=2, model__min_samples_leaf=2)
+    with threadpool_limits(limits=2):
+        pipeline.fit(features, transactions["is_laundering"])
+        scores = pipeline.predict_proba(features.iloc[:2])[:, 1]
+
+    assert pipeline.named_steps["model"].is_categorical_.tolist() == (
+        [False] * 8 + [True] * 2
+    )
+    assert not any(
+        "payment_format" in name
+        for name in pipeline.named_steps["preprocess"].get_feature_names_out()
+    )
+    assert np.isfinite(scores).all()
+
+
+def test_unknown_feature_exclusion_is_rejected(transactions):
+    with pytest.raises(ValueError, match="Unknown"):
+        make_features(transactions, excluded_features=("payment_formatt",))
+    with pytest.raises(ValueError, match="Unknown"):
+        build_model(excluded_features=("payment_formatt",))

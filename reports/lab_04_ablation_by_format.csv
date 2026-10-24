@@ -1,0 +1,9 @@
+,with_format,with_format,without_format,without_format
+,reviews,caught,reviews,caught
+payment_format,,,,
+ACH,100,52,46,19
+Bitcoin,0,0,0,0
+Cash,0,0,5,0
+Cheque,0,0,29,0
+Credit Card,0,0,18,0
+Wire,0,0,2,0
