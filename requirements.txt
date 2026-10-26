@@ -5,3 +5,4 @@ matplotlib
 ipykernel
 pytest
 scikit-learn
+torch
