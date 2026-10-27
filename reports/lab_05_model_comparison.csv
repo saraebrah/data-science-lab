@@ -1,0 +1,4 @@
+model,average_precision,alerts,laundering_caught,precision_at_budget,recall_at_budget
+boosting_transaction_only,0.0668642773946123,100,27,0.27,0.026061776061776
+boosting_with_history,0.1338057275601685,100,52,0.52,0.0501930501930501
+neural_with_history,0.08208250904550882,100,35,0.35,0.033783783783783786
