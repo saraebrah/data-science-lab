@@ -39,15 +39,19 @@ class TabularTransformer(EmbeddingClassifier):
             if use_transformer else nn.Identity()
         )
 
-    def forward(
-        self, numeric: torch.Tensor, categories: torch.Tensor
-    ) -> torch.Tensor:
+    def encode_categories(self, categories: torch.Tensor) -> torch.Tensor:
+        """Return contextual category tokens for either supervised or masked tasks."""
         if categories.ndim != 2 or categories.shape[1] != len(self.embeddings):
             raise ValueError("Number of categorical columns must match the embedding tables.")
         tokens = torch.stack([
             table(categories[:, column])
             for column, table in enumerate(self.embeddings)
         ], dim=1)
-        contextual = self.context(tokens)
+        return self.context(tokens)
+
+    def forward(
+        self, numeric: torch.Tensor, categories: torch.Tensor
+    ) -> torch.Tensor:
+        contextual = self.encode_categories(categories)
         combined = torch.cat([numeric, contextual.flatten(start_dim=1)], dim=1)
         return self.classifier(combined)
