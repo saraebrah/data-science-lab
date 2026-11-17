@@ -6,3 +6,4 @@ ipykernel
 pytest
 scikit-learn
 torch
+sentence-transformers
