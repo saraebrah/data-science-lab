@@ -1,0 +1,11 @@
+source_row,method,selected_passage,top_three,selected_rank
+695464,TF-IDF,P03,"P06, P03, P01",2
+2273022,TF-IDF,P03,"P06, P03, P01",2
+3906793,TF-IDF,P03,"P06, P03, P01",2
+812704,TF-IDF,P03,"P06, P03, P01",2
+3863648,TF-IDF,P03,"P06, P03, P01",2
+695464,Original encoder,P03,"P07, P03, P05",2
+2273022,Original encoder,P03,"P07, P03, P05",2
+3906793,Original encoder,P03,"P07, P03, P05",2
+812704,Original encoder,P03,"P07, P03, P05",2
+3863648,Original encoder,P03,"P07, P03, P05",2
