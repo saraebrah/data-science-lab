@@ -7,3 +7,5 @@ pytest
 scikit-learn
 torch
 sentence-transformers
+openai
+dotenv
